@@ -1,0 +1,918 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>おくすり手帳</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=DM+Serif+Display&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --cream: #FAF7F2;
+    --warm-white: #FFFEF9;
+    --sage: #7A9E7E;
+    --sage-light: #C8DEC9;
+    --sage-dark: #4E7252;
+    --terracotta: #C17F56;
+    --terracotta-light: #EEDDD0;
+    --navy: #2C3E50;
+    --gray: #8B9099;
+    --light-gray: #E8E4DE;
+    --checked-bg: #EFF6EF;
+    --dose1: #D4EDDA;
+    --dose2: #A8D5B0;
+    --dose3: #7A9E7E;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Noto Sans JP', sans-serif;
+    background: var(--cream);
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    padding: 32px 16px 80px;
+  }
+
+  .app { width: 100%; max-width: 440px; }
+
+  /* Header */
+  header { text-align: center; margin-bottom: 28px; }
+  .app-title { font-family: 'DM Serif Display', serif; font-size: 2rem; color: var(--sage-dark); letter-spacing: 0.02em; }
+  .app-subtitle { font-size: 0.72rem; color: var(--gray); letter-spacing: 0.14em; margin-top: 2px; }
+  .date-badge { display: inline-block; background: var(--sage-light); color: var(--sage-dark); font-size: 0.78rem; font-weight: 500; padding: 5px 16px; border-radius: 20px; margin-top: 10px; }
+
+  /* Tab Nav */
+  .tab-nav { display: flex; background: var(--light-gray); border-radius: 16px; padding: 4px; margin-bottom: 24px; gap: 4px; }
+  .tab-btn { flex: 1; padding: 9px 0; border: none; background: none; border-radius: 12px; font-family: 'Noto Sans JP', sans-serif; font-size: 0.82rem; font-weight: 500; color: var(--gray); cursor: pointer; transition: all 0.22s ease; }
+  .tab-btn.active { background: var(--warm-white); color: var(--sage-dark); box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+
+  .page { display: none; }
+  .page.active { display: block; }
+
+  /* Progress Ring */
+  .progress-section { display: flex; justify-content: center; margin-bottom: 28px; }
+  .progress-ring-wrap { position: relative; width: 120px; height: 120px; }
+  .progress-ring-wrap svg { transform: rotate(-90deg); }
+  .ring-bg { fill: none; stroke: var(--light-gray); stroke-width: 8; }
+  .ring-fill { fill: none; stroke: var(--sage); stroke-width: 8; stroke-linecap: round; transition: stroke-dashoffset 0.6s ease; }
+  .progress-text { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; }
+  .progress-num { font-size: 1.6rem; font-weight: 700; color: var(--sage-dark); line-height: 1; }
+  .progress-label { font-size: 0.65rem; color: var(--gray); margin-top: 2px; }
+
+  /* Today total mg summary */
+  .today-summary {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    margin-bottom: 28px;
+  }
+  .summary-pill {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--warm-white);
+    border-radius: 20px;
+    padding: 7px 14px;
+    font-size: 0.78rem;
+    color: var(--gray);
+    box-shadow: 0 1px 6px rgba(0,0,0,0.06);
+    transition: all 0.3s ease;
+  }
+  .summary-pill.active-dose { color: var(--sage-dark); background: var(--checked-bg); }
+  .summary-pill .pill-icon { font-size: 0.9rem; }
+  .summary-pill .pill-mg { font-weight: 700; font-size: 0.88rem; }
+
+  /* Section Cards */
+  .section { background: var(--warm-white); border-radius: 20px; padding: 20px 18px; margin-bottom: 14px; box-shadow: 0 2px 12px rgba(0,0,0,0.05); }
+  .section-header { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+  .section-icon { width: 36px; height: 36px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; flex-shrink: 0; }
+  .morning .section-icon { background: #FFF3CD; }
+  .evening .section-icon { background: var(--terracotta-light); }
+  .section-title { font-size: 0.98rem; font-weight: 700; color: var(--navy); }
+  .section-time { font-size: 0.72rem; color: var(--gray); margin-left: auto; background: var(--light-gray); padding: 3px 10px; border-radius: 10px; }
+
+  /* Med Item — standard (Takecab) */
+  .med-item { display: flex; align-items: center; gap: 14px; padding: 13px 14px; border-radius: 14px; cursor: pointer; transition: all 0.22s ease; border: 2px solid transparent; user-select: none; margin-bottom: 8px; }
+  .med-item:last-child { margin-bottom: 0; }
+  .med-item:hover { background: var(--cream); }
+  .med-item.checked { background: var(--checked-bg); border-color: var(--sage-light); }
+
+  .checkbox { width: 28px; height: 28px; border-radius: 50%; border: 2px solid var(--light-gray); display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all 0.22s ease; background: white; }
+  .med-item.checked .checkbox { background: var(--sage); border-color: var(--sage); }
+  .checkmark { opacity: 0; transform: scale(0); transition: all 0.25s cubic-bezier(0.34,1.56,0.64,1); color: white; font-size: 0.88rem; }
+  .med-item.checked .checkmark { opacity: 1; transform: scale(1); }
+
+  .med-info { flex: 1; }
+  .med-name { font-size: 0.92rem; font-weight: 500; color: var(--navy); }
+  .med-note { font-size: 0.7rem; color: var(--gray); margin-top: 2px; }
+  .med-item.checked .med-name { color: var(--sage-dark); text-decoration: line-through; text-decoration-color: var(--sage-light); }
+
+  .med-tag { font-size: 0.65rem; padding: 3px 9px; border-radius: 8px; font-weight: 500; flex-shrink: 0; }
+  .morning .med-tag { background: #FFF3CD; color: #8B6914; }
+  .evening .med-tag { background: var(--terracotta-light); color: #7A4B2D; }
+
+  /* ── Tarlige Dose Card ── */
+  .dose-card {
+    border: 2px solid var(--light-gray);
+    border-radius: 16px;
+    padding: 14px 16px;
+    margin-bottom: 8px;
+    transition: all 0.25s ease;
+    background: white;
+  }
+  .dose-card.taken {
+    border-color: var(--sage-light);
+    background: var(--checked-bg);
+  }
+  .dose-card-top {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+  .dose-card-top .med-info { flex: 1; }
+  .dose-card-top .med-name { font-size: 0.92rem; font-weight: 500; color: var(--navy); }
+  .dose-card.taken .med-name { color: var(--sage-dark); }
+  .dose-card-top .med-note { font-size: 0.7rem; color: var(--gray); margin-top: 2px; }
+
+  /* Tablet picker */
+  .tablet-picker {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .tablet-picker-label {
+    font-size: 0.72rem;
+    color: var(--gray);
+    white-space: nowrap;
+    min-width: 42px;
+  }
+  .tablet-opts {
+    display: flex;
+    gap: 6px;
+    flex: 1;
+  }
+  .tablet-btn {
+    flex: 1;
+    padding: 8px 4px;
+    border-radius: 12px;
+    border: 2px solid var(--light-gray);
+    background: white;
+    cursor: pointer;
+    font-family: 'Noto Sans JP', sans-serif;
+    transition: all 0.2s ease;
+    text-align: center;
+  }
+  .tablet-btn:hover { border-color: var(--sage-light); background: var(--cream); }
+  .tablet-btn.selected {
+    border-color: var(--sage);
+    background: var(--sage);
+    color: white;
+    box-shadow: 0 2px 8px rgba(122,158,126,0.35);
+  }
+  .tablet-btn .t-count { font-size: 0.92rem; font-weight: 700; display: block; }
+  .tablet-btn .t-mg { font-size: 0.62rem; color: var(--gray); display: block; margin-top: 1px; }
+  .tablet-btn.selected .t-mg { color: rgba(255,255,255,0.8); }
+
+  /* Tablet visual */
+  .tablet-visual {
+    display: flex;
+    gap: 3px;
+    justify-content: center;
+    margin-top: 10px;
+  }
+  .pill-shape {
+    width: 22px;
+    height: 10px;
+    border-radius: 5px;
+    background: var(--sage-light);
+    transition: all 0.3s ease;
+  }
+  .pill-shape.lit { background: var(--sage); }
+
+  /* Not-taken strip */
+  .not-taken-strip {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 8px;
+  }
+  .not-taken-btn {
+    flex: 1;
+    padding: 7px;
+    border-radius: 10px;
+    border: 1.5px solid var(--light-gray);
+    background: white;
+    font-family: 'Noto Sans JP', sans-serif;
+    font-size: 0.75rem;
+    color: var(--gray);
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: center;
+  }
+  .not-taken-btn:hover { border-color: #e08080; color: #9B4545; background: #FEF0F0; }
+  .not-taken-btn.active { border-color: #e08080; background: #FEF0F0; color: #9B4545; }
+
+  /* All Done */
+  .all-done { text-align: center; padding: 18px; background: var(--checked-bg); border-radius: 14px; border: 2px dashed var(--sage-light); margin-top: 14px; display: none; animation: fadeIn 0.4s ease; }
+  .all-done.visible { display: block; }
+  .all-done-emoji { font-size: 1.8rem; }
+  .all-done-text { font-size: 0.88rem; color: var(--sage-dark); font-weight: 500; margin-top: 6px; }
+
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+
+  .reset-wrap { text-align: center; margin-top: 20px; }
+  .reset-btn { background: none; border: 1.5px solid var(--light-gray); color: var(--gray); font-family: 'Noto Sans JP', sans-serif; font-size: 0.78rem; padding: 8px 22px; border-radius: 20px; cursor: pointer; transition: all 0.2s; }
+  .reset-btn:hover { border-color: var(--sage-light); color: var(--sage-dark); background: var(--checked-bg); }
+
+  /* ── CALENDAR ── */
+  .calendar-wrap { background: var(--warm-white); border-radius: 20px; padding: 20px 18px; box-shadow: 0 2px 12px rgba(0,0,0,0.05); }
+  .cal-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+  .cal-nav-btn { background: none; border: 1.5px solid var(--light-gray); width: 36px; height: 36px; border-radius: 50%; font-size: 1.1rem; cursor: pointer; color: var(--navy); transition: all 0.2s; display: flex; align-items: center; justify-content: center; }
+  .cal-nav-btn:hover { border-color: var(--sage); color: var(--sage-dark); background: var(--checked-bg); }
+  .cal-month { font-size: 1.05rem; font-weight: 700; color: var(--navy); }
+
+  .cal-grid-header { display: grid; grid-template-columns: repeat(7, 1fr); margin-bottom: 6px; }
+  .cal-day-label { text-align: center; font-size: 0.68rem; font-weight: 500; color: var(--gray); padding: 4px 0; }
+  .cal-day-label:first-child { color: #e07070; }
+  .cal-day-label:last-child { color: #7090c0; }
+
+  .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+  .cal-cell { aspect-ratio: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 12px; cursor: pointer; transition: all 0.18s ease; }
+  .cal-cell:hover:not(.empty) { background: var(--cream); }
+  .cal-cell.empty { pointer-events: none; }
+  .cal-cell.today { background: var(--sage-light); }
+  .cal-cell.selected { background: var(--sage); box-shadow: 0 2px 8px rgba(122,158,126,0.4); }
+  .cal-cell.today.selected { background: var(--sage-dark); }
+  .cal-num { font-size: 0.82rem; font-weight: 500; color: var(--navy); line-height: 1; }
+  .cal-cell.today .cal-num { color: var(--sage-dark); font-weight: 700; }
+  .cal-cell.selected .cal-num { color: white !important; }
+  .cal-num.sun { color: #e07070; }
+  .cal-num.sat { color: #7090c0; }
+  .cal-dots { display: flex; gap: 2px; margin-top: 3px; }
+  .cal-dot { width: 5px; height: 5px; border-radius: 50%; }
+  .cal-dot.morning { background: #F0C040; }
+  .cal-dot.evening { background: var(--terracotta); }
+
+  /* Dose badge in calendar cell */
+  .cal-mg { font-size: 0.52rem; color: var(--sage-dark); font-weight: 700; margin-top: 1px; line-height: 1; }
+  .cal-cell.selected .cal-mg { color: rgba(255,255,255,0.9); }
+
+  .day-detail { background: var(--warm-white); border-radius: 20px; padding: 20px 18px; margin-top: 16px; box-shadow: 0 2px 12px rgba(0,0,0,0.05); animation: fadeIn 0.25s ease; }
+  .day-detail-title { font-size: 0.95rem; font-weight: 700; color: var(--navy); margin-bottom: 14px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .badge { font-size: 0.68rem; padding: 3px 10px; border-radius: 10px; font-weight: 500; }
+  .badge-full { background: var(--checked-bg); color: var(--sage-dark); }
+  .badge-partial { background: #FFF3CD; color: #8B6914; }
+  .badge-none { background: #F5E8E8; color: #9B4545; }
+  .badge-future { background: var(--light-gray); color: var(--gray); }
+
+  .detail-row { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--light-gray); }
+  .detail-row:last-child { border-bottom: none; }
+  .detail-icon { font-size: 1rem; width: 24px; text-align: center; }
+  .detail-name { font-size: 0.85rem; color: var(--navy); flex: 1; }
+  .detail-name small { display: block; font-size: 0.68rem; color: var(--gray); margin-top: 1px; }
+  .detail-status { font-size: 0.78rem; font-weight: 500; text-align: right; }
+  .detail-status.done { color: var(--sage-dark); }
+  .detail-status.skip { color: var(--gray); }
+  .detail-status.skipped { color: #c0695a; }
+  .detail-status.future { color: var(--gray); font-style: italic; }
+  .detail-dose { font-size: 0.68rem; color: var(--gray); margin-top: 1px; }
+
+  /* Day total mg */
+  .detail-total { background: var(--checked-bg); border-radius: 12px; padding: 10px 14px; margin-top: 12px; display: flex; align-items: center; justify-content: space-between; }
+  .detail-total-label { font-size: 0.78rem; color: var(--sage-dark); font-weight: 500; }
+  .detail-total-val { font-size: 1rem; font-weight: 700; color: var(--sage-dark); }
+
+  .cal-legend { display: flex; gap: 16px; justify-content: center; margin-top: 14px; flex-wrap: wrap; }
+  .legend-item { display: flex; align-items: center; gap: 5px; font-size: 0.7rem; color: var(--gray); }
+  .legend-dot { width: 8px; height: 8px; border-radius: 50%; }
+
+  /* ── HISTORY ── */
+  .history-list { display: flex; flex-direction: column; gap: 12px; }
+  .history-card { background: var(--warm-white); border-radius: 16px; padding: 16px 18px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
+  .history-card-date { font-size: 0.78rem; font-weight: 700; color: var(--gray); margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between; }
+  .history-pills { display: flex; flex-wrap: wrap; gap: 6px; }
+  .history-pill { font-size: 0.72rem; padding: 4px 11px; border-radius: 20px; font-weight: 500; }
+  .history-pill.done { background: var(--checked-bg); color: var(--sage-dark); }
+  .history-pill.skip { background: var(--light-gray); color: var(--gray); text-decoration: line-through; }
+  .history-pill.skipped { background: #FEF0F0; color: #9B4545; }
+  .history-empty { text-align: center; color: var(--gray); font-size: 0.88rem; padding: 40px 0; }
+  .hbadge { font-size: 0.68rem; padding: 2px 8px; border-radius: 8px; }
+
+  /* Dose trend chart */
+  .trend-section { background: var(--warm-white); border-radius: 20px; padding: 20px 18px; margin-bottom: 16px; box-shadow: 0 2px 12px rgba(0,0,0,0.05); }
+  .trend-title { font-size: 0.88rem; font-weight: 700; color: var(--navy); margin-bottom: 14px; }
+  .trend-chart { display: flex; align-items: flex-end; gap: 4px; height: 64px; }
+  .trend-bar-wrap { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; }
+  .trend-bar { width: 100%; border-radius: 4px 4px 0 0; transition: height 0.4s ease; min-height: 2px; }
+  .trend-bar.mg15 { background: var(--sage); }
+  .trend-bar.mg10 { background: var(--sage-light); }
+  .trend-bar.mg5  { background: #d4edda; }
+  .trend-bar.mg0  { background: var(--light-gray); }
+  .trend-label { font-size: 0.55rem; color: var(--gray); text-align: center; }
+  .trend-mg { font-size: 0.6rem; color: var(--sage-dark); font-weight: 700; }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="app-title">おくすり手帳</div>
+    <div class="app-subtitle">MEDICATION TRACKER</div>
+    <div class="date-badge" id="dateBadge"></div>
+  </header>
+
+  <div class="tab-nav">
+    <button class="tab-btn active" onclick="showTab('today',this)">💊 今日</button>
+    <button class="tab-btn" onclick="showTab('calendar',this)">📅 カレンダー</button>
+    <button class="tab-btn" onclick="showTab('history',this)">📋 履歴</button>
+  </div>
+
+  <!-- ═══ TODAY ═══ -->
+  <div class="page active" id="page-today">
+    <div class="progress-section">
+      <div class="progress-ring-wrap">
+        <svg width="120" height="120" viewBox="0 0 120 120">
+          <circle class="ring-bg" cx="60" cy="60" r="50"/>
+          <circle class="ring-fill" cx="60" cy="60" r="50" id="ringFill"
+            stroke-dasharray="314" stroke-dashoffset="314"/>
+        </svg>
+        <div class="progress-text">
+          <div class="progress-num" id="progressNum">0/3</div>
+          <div class="progress-label">服薬済み</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- today mg summary -->
+    <div class="today-summary">
+      <div class="summary-pill" id="summaryMorning">
+        <span class="pill-icon">☀️</span>
+        <span>タリージェ朝：</span>
+        <span class="pill-mg" id="summaryMorningMg">—</span>
+      </div>
+      <div class="summary-pill" id="summaryEvening">
+        <span class="pill-icon">🌙</span>
+        <span>夜：</span>
+        <span class="pill-mg" id="summaryEveningMg">—</span>
+      </div>
+    </div>
+
+    <!-- 朝食後 -->
+    <div class="section morning">
+      <div class="section-header">
+        <div class="section-icon">☀️</div>
+        <div><div class="section-title">朝食後</div></div>
+        <div class="section-time">2種類</div>
+      </div>
+
+      <!-- Tarlige Morning -->
+      <div class="dose-card" id="doseCard-0">
+        <div class="dose-card-top">
+          <div class="med-info">
+            <div class="med-name">タリージェ 5mg × ?錠</div>
+            <div class="med-note">神経障害性疼痛治療薬　／　朝食後に服用</div>
+          </div>
+          <div class="med-tag" style="background:#FFF3CD;color:#8B6914;">朝</div>
+        </div>
+        <div class="tablet-picker">
+          <div class="tablet-picker-label">錠数を選択：</div>
+          <div class="tablet-opts">
+            <button class="tablet-btn" onclick="selectDose(0,1)">
+              <span class="t-count">1錠</span>
+              <span class="t-mg">5mg</span>
+            </button>
+            <button class="tablet-btn" onclick="selectDose(0,2)">
+              <span class="t-count">2錠</span>
+              <span class="t-mg">10mg</span>
+            </button>
+            <button class="tablet-btn" onclick="selectDose(0,3)">
+              <span class="t-count">3錠</span>
+              <span class="t-mg">15mg</span>
+            </button>
+          </div>
+        </div>
+        <div class="tablet-visual" id="visual-0">
+          <div class="pill-shape" id="vis-0-0"></div>
+          <div class="pill-shape" id="vis-0-1"></div>
+          <div class="pill-shape" id="vis-0-2"></div>
+        </div>
+        <div class="not-taken-strip">
+          <button class="not-taken-btn" id="notTaken-0" onclick="setNotTaken(0)">✗ この服薬はスキップ</button>
+        </div>
+      </div>
+
+      <!-- Takecab -->
+      <div class="med-item" id="med-1" onclick="toggleMed(1)">
+        <div class="checkbox"><span class="checkmark">✓</span></div>
+        <div class="med-info">
+          <div class="med-name">タケキャブ 20mg</div>
+          <div class="med-note">胃酸分泌抑制薬　／　朝食後に服用</div>
+        </div>
+        <div class="med-tag">朝</div>
+      </div>
+    </div>
+
+    <!-- 夕食後 -->
+    <div class="section evening">
+      <div class="section-header">
+        <div class="section-icon">🌙</div>
+        <div><div class="section-title">夕食後</div></div>
+        <div class="section-time">1種類</div>
+      </div>
+
+      <!-- Tarlige Evening -->
+      <div class="dose-card" id="doseCard-2">
+        <div class="dose-card-top">
+          <div class="med-info">
+            <div class="med-name">タリージェ 5mg × ?錠</div>
+            <div class="med-note">神経障害性疼痛治療薬　／　夕食後に服用</div>
+          </div>
+          <div class="med-tag" style="background:var(--terracotta-light);color:#7A4B2D;">夜</div>
+        </div>
+        <div class="tablet-picker">
+          <div class="tablet-picker-label">錠数を選択：</div>
+          <div class="tablet-opts">
+            <button class="tablet-btn" onclick="selectDose(2,1)">
+              <span class="t-count">1錠</span>
+              <span class="t-mg">5mg</span>
+            </button>
+            <button class="tablet-btn" onclick="selectDose(2,2)">
+              <span class="t-count">2錠</span>
+              <span class="t-mg">10mg</span>
+            </button>
+            <button class="tablet-btn" onclick="selectDose(2,3)">
+              <span class="t-count">3錠</span>
+              <span class="t-mg">15mg</span>
+            </button>
+          </div>
+        </div>
+        <div class="tablet-visual" id="visual-2">
+          <div class="pill-shape" id="vis-2-0"></div>
+          <div class="pill-shape" id="vis-2-1"></div>
+          <div class="pill-shape" id="vis-2-2"></div>
+        </div>
+        <div class="not-taken-strip">
+          <button class="not-taken-btn" id="notTaken-2" onclick="setNotTaken(2)">✗ この服薬はスキップ</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="all-done" id="allDone">
+      <div class="all-done-emoji">🎉</div>
+      <div class="all-done-text">今日の服薬が完了しました！お疲れさまでした。</div>
+    </div>
+
+    <div class="reset-wrap">
+      <button class="reset-btn" onclick="resetToday()">✕　今日のチェックをリセット</button>
+    </div>
+  </div>
+
+  <!-- ═══ CALENDAR ═══ -->
+  <div class="page" id="page-calendar">
+    <div class="calendar-wrap">
+      <div class="cal-nav">
+        <button class="cal-nav-btn" onclick="changeMonth(-1)">‹</button>
+        <div class="cal-month" id="calMonth"></div>
+        <button class="cal-nav-btn" onclick="changeMonth(1)">›</button>
+      </div>
+      <div class="cal-grid-header">
+        <div class="cal-day-label">日</div><div class="cal-day-label">月</div>
+        <div class="cal-day-label">火</div><div class="cal-day-label">水</div>
+        <div class="cal-day-label">木</div><div class="cal-day-label">金</div>
+        <div class="cal-day-label">土</div>
+      </div>
+      <div class="cal-grid" id="calGrid"></div>
+      <div class="cal-legend">
+        <div class="legend-item"><div class="legend-dot" style="background:#F0C040"></div>朝服薬済</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--terracotta)"></div>夜服薬済</div>
+      </div>
+    </div>
+    <div id="dayDetail" style="display:none"></div>
+  </div>
+
+  <!-- ═══ HISTORY ═══ -->
+  <div class="page" id="page-history">
+    <div class="trend-section" id="trendSection" style="display:none">
+      <div class="trend-title">📉 タリージェ 1日の総服薬量（直近14日）</div>
+      <div class="trend-chart" id="trendChart"></div>
+    </div>
+    <div class="history-list" id="historyList">
+      <div class="history-empty">まだ記録がありません</div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════
+// DATA STRUCTURE per day key "YYYY-M-D":
+// {
+//   doses: [val0, val1, val2]
+//     val for Tarlige (idx 0,2): null=未選択, 0=スキップ, 1/2/3=錠数
+//     val for Takecab (idx 1): null=未選択, 0=スキップ, 1=服薬済み
+// }
+// ═══════════════════════════════════════════
+
+const STORAGE_KEY = 'medHistory_v3';
+const WEEKDAYS = ['日','月','火','水','木','金','土'];
+const MONTH_NAMES = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
+
+// Index 0 = Tarlige morning, 1 = Takecab morning, 2 = Tarlige evening
+const IS_TARLIGE = [true, false, true];
+
+function getTodayKey() {
+  const d = new Date();
+  return `${d.getFullYear()}-${d.getMonth()+1}-${d.getDate()}`;
+}
+function loadHistory() {
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; }
+  catch(e) { return {}; }
+}
+function saveHistory() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(history));
+}
+
+let history = loadHistory();
+let calYear = new Date().getFullYear();
+let calMonth = new Date().getMonth();
+let selectedDay = null;
+
+function getTodayDoses() {
+  if (!history[getTodayKey()]) history[getTodayKey()] = { doses: [null, null, null] };
+  return history[getTodayKey()].doses;
+}
+
+// ── Dose selection for Tarlige ──
+function selectDose(idx, tablets) {
+  const doses = getTodayDoses();
+  // Toggle off if same value
+  if (doses[idx] === tablets) {
+    doses[idx] = null;
+  } else {
+    doses[idx] = tablets;
+  }
+  saveHistory();
+  renderToday();
+}
+
+// ── Skip ──
+function setNotTaken(idx) {
+  const doses = getTodayDoses();
+  doses[idx] = doses[idx] === 0 ? null : 0;
+  saveHistory();
+  renderToday();
+}
+
+// ── Takecab toggle ──
+function toggleMed(idx) {
+  const doses = getTodayDoses();
+  if (doses[idx] === 1) {
+    doses[idx] = null;
+  } else {
+    doses[idx] = 1;
+  }
+  saveHistory();
+  renderToday();
+}
+
+function resetToday() {
+  history[getTodayKey()] = { doses: [null, null, null] };
+  saveHistory();
+  renderToday();
+}
+
+// ── Count how many meds are "done" (value !== null) ──
+function countDone(doses) {
+  return doses.filter(v => v !== null).length;
+}
+
+// ── Tarlige mg from tablets ──
+function getMg(tablets) {
+  if (tablets === null || tablets === 0) return null;
+  return tablets * 5;
+}
+
+// ── TODAY render ──
+function renderToday() {
+  const doses = getTodayDoses();
+  const count = countDone(doses);
+
+  // Ring
+  const offset = 314 - (count / 3) * 314;
+  document.getElementById('ringFill').style.strokeDashoffset = offset;
+  document.getElementById('progressNum').textContent = `${count}/3`;
+
+  // Summary pills
+  const mg0 = getMg(doses[0]);
+  const mg2 = getMg(doses[2]);
+  const sum0 = document.getElementById('summaryMorning');
+  const sum2 = document.getElementById('summaryEvening');
+  document.getElementById('summaryMorningMg').textContent = doses[0] === 0 ? 'スキップ' : mg0 !== null ? `${mg0}mg` : '—';
+  document.getElementById('summaryEveningMg').textContent = doses[2] === 0 ? 'スキップ' : mg2 !== null ? `${mg2}mg` : '—';
+  sum0.classList.toggle('active-dose', doses[0] !== null);
+  sum2.classList.toggle('active-dose', doses[2] !== null);
+
+  // Tarlige dose cards
+  [0, 2].forEach(idx => {
+    const card = document.getElementById(`doseCard-${idx}`);
+    const val = doses[idx];
+    card.classList.toggle('taken', val !== null);
+
+    // Update name
+    const nameEl = card.querySelector('.med-name');
+    if (val === 0) nameEl.textContent = 'タリージェ 5mg ― スキップ';
+    else if (val !== null) nameEl.textContent = `タリージェ 5mg × ${val}錠（${val*5}mg）`;
+    else nameEl.textContent = 'タリージェ 5mg × ?錠';
+
+    // Tablet buttons
+    const btns = card.querySelectorAll('.tablet-btn');
+    btns.forEach((btn, i) => {
+      btn.classList.toggle('selected', val === i + 1);
+    });
+
+    // Visual pills
+    for (let p = 0; p < 3; p++) {
+      const el = document.getElementById(`vis-${idx}-${p}`);
+      el.classList.toggle('lit', val !== null && val !== 0 && p < val);
+    }
+
+    // Not taken btn
+    const ntBtn = document.getElementById(`notTaken-${idx}`);
+    ntBtn.classList.toggle('active', val === 0);
+    ntBtn.textContent = val === 0 ? '↩ スキップを取り消す' : '✗ この服薬はスキップ';
+  });
+
+  // Takecab
+  const medEl = document.getElementById('med-1');
+  medEl.classList.toggle('checked', doses[1] === 1);
+
+  // All done
+  document.getElementById('allDone').classList.toggle('visible', count === 3);
+}
+
+// ── TABS ──
+function showTab(tab, btn) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-' + tab).classList.add('active');
+  btn.classList.add('active');
+  if (tab === 'calendar') renderCalendar();
+  if (tab === 'history') renderHistory();
+}
+
+// ── CALENDAR ──
+function changeMonth(delta) {
+  calMonth += delta;
+  if (calMonth < 0) { calMonth = 11; calYear--; }
+  if (calMonth > 11) { calMonth = 0; calYear++; }
+  selectedDay = null;
+  document.getElementById('dayDetail').style.display = 'none';
+  renderCalendar();
+}
+
+function getDayTotalMg(doses) {
+  if (!doses) return null;
+  const mg0 = (doses[0] > 0) ? doses[0] * 5 : 0;
+  const mg2 = (doses[2] > 0) ? doses[2] * 5 : 0;
+  return mg0 + mg2;
+}
+
+function renderCalendar() {
+  document.getElementById('calMonth').textContent = `${calYear}年 ${MONTH_NAMES[calMonth]}`;
+  const today = new Date(); today.setHours(0,0,0,0);
+  const firstDow = new Date(calYear, calMonth, 1).getDay();
+  const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+  const grid = document.getElementById('calGrid');
+  grid.innerHTML = '';
+
+  for (let i = 0; i < firstDow; i++) {
+    const el = document.createElement('div');
+    el.className = 'cal-cell empty';
+    grid.appendChild(el);
+  }
+
+  for (let d = 1; d <= daysInMonth; d++) {
+    const key = `${calYear}-${calMonth+1}-${d}`;
+    const cellDate = new Date(calYear, calMonth, d);
+    const isToday = cellDate.getTime() === today.getTime();
+    const isFuture = cellDate > today;
+    const dow = cellDate.getDay();
+    const dayData = history[key];
+    const doses = dayData ? dayData.doses : null;
+
+    const cell = document.createElement('div');
+    cell.className = 'cal-cell' + (isToday ? ' today' : '') + (selectedDay === key ? ' selected' : '');
+    cell.onclick = () => selectDay(key, isFuture);
+
+    const num = document.createElement('div');
+    num.className = 'cal-num' + (dow===0 ? ' sun' : dow===6 ? ' sat' : '');
+    num.textContent = d;
+    cell.appendChild(num);
+
+    if (!isFuture && doses) {
+      const morningDone = doses[0] > 0 || doses[1] === 1;
+      const eveningDone = doses[2] > 0;
+      if (morningDone || eveningDone) {
+        const dots = document.createElement('div');
+        dots.className = 'cal-dots';
+        if (morningDone) { const dot = document.createElement('div'); dot.className = 'cal-dot morning'; dots.appendChild(dot); }
+        if (eveningDone) { const dot = document.createElement('div'); dot.className = 'cal-dot evening'; dots.appendChild(dot); }
+        cell.appendChild(dots);
+      }
+      // Total mg label
+      const totalMg = getDayTotalMg(doses);
+      if (totalMg !== null && totalMg > 0) {
+        const mgEl = document.createElement('div');
+        mgEl.className = 'cal-mg';
+        mgEl.textContent = `${totalMg}mg`;
+        cell.appendChild(mgEl);
+      }
+    }
+    grid.appendChild(cell);
+  }
+}
+
+function selectDay(key, isFuture) {
+  if (selectedDay === key) {
+    selectedDay = null;
+    document.getElementById('dayDetail').style.display = 'none';
+    renderCalendar();
+    return;
+  }
+  selectedDay = key;
+  renderCalendar();
+
+  const [y, m, d] = key.split('-').map(Number);
+  const dow = new Date(y, m-1, d).getDay();
+  const today = new Date(); today.setHours(0,0,0,0);
+  const dayData = history[key];
+  const doses = dayData ? dayData.doses : [null, null, null];
+  const doneCount = countDone(doses);
+
+  let badgeClass, badgeText;
+  if (isFuture) { badgeClass = 'badge-future'; badgeText = '未来の日付'; }
+  else if (doneCount === 3) { badgeClass = 'badge-full'; badgeText = '✓ 完了'; }
+  else if (doneCount > 0) { badgeClass = 'badge-partial'; badgeText = `${doneCount}/3`; }
+  else { badgeClass = 'badge-none'; badgeText = '未記録'; }
+
+  const medDefs = [
+    { name: 'タリージェ 5mg', icon: '☀️', label: '朝食後', isTarlige: true, idx: 0 },
+    { name: 'タケキャブ 20mg', icon: '☀️', label: '朝食後', isTarlige: false, idx: 1 },
+    { name: 'タリージェ 5mg', icon: '🌙', label: '夕食後', isTarlige: true, idx: 2 },
+  ];
+
+  let html = `<div class="day-detail-title">${y}年${m}月${d}日（${WEEKDAYS[dow]}）<span class="badge ${badgeClass}">${badgeText}</span></div>`;
+
+  for (const med of medDefs) {
+    const val = doses[med.idx];
+    let statusHtml, doseHtml = '';
+    if (isFuture) {
+      statusHtml = `<div class="detail-status future">—</div>`;
+    } else if (val === null) {
+      statusHtml = `<div class="detail-status skip">未記録</div>`;
+    } else if (val === 0) {
+      statusHtml = `<div class="detail-status skipped">スキップ</div>`;
+    } else {
+      if (med.isTarlige) {
+        statusHtml = `<div class="detail-status done">✓ ${val}錠服用</div>`;
+        doseHtml = `<div class="detail-dose">${val * 5}mg</div>`;
+      } else {
+        statusHtml = `<div class="detail-status done">✓ 服薬済み</div>`;
+      }
+    }
+    html += `<div class="detail-row">
+      <div class="detail-icon">${med.icon}</div>
+      <div class="detail-name">${med.name}<small>${med.label}</small></div>
+      <div style="text-align:right">${statusHtml}${doseHtml}</div>
+    </div>`;
+  }
+
+  // Day total
+  const totalMg = getDayTotalMg(doses);
+  if (!isFuture && totalMg !== null) {
+    html += `<div class="detail-total">
+      <div class="detail-total-label">タリージェ 1日合計</div>
+      <div class="detail-total-val">${totalMg}mg</div>
+    </div>`;
+  }
+
+  const panel = document.getElementById('dayDetail');
+  panel.className = 'day-detail';
+  panel.innerHTML = html;
+  panel.style.display = 'block';
+  panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+// ── HISTORY ──
+function renderHistory() {
+  const container = document.getElementById('historyList');
+  const allKeys = Object.keys(history)
+    .filter(k => {
+      const d = history[k];
+      return d && d.doses && d.doses.some(v => v !== null);
+    })
+    .sort((a, b) => {
+      const parse = s => { const p = s.split('-').map(Number); return new Date(p[0], p[1]-1, p[2]); };
+      return parse(b) - parse(a);
+    });
+
+  if (allKeys.length === 0) {
+    container.innerHTML = '<div class="history-empty">まだ服薬記録がありません</div>';
+    document.getElementById('trendSection').style.display = 'none';
+    return;
+  }
+
+  // Trend chart (last 14 days with records)
+  renderTrend(allKeys.slice(0, 14).reverse());
+
+  const medShort = ['タリージェ（朝）', 'タケキャブ（朝）', 'タリージェ（夜）'];
+  let html = '';
+  for (const key of allKeys.slice(0, 60)) {
+    const [y, m, d] = key.split('-').map(Number);
+    const dow = new Date(y, m-1, d).getDay();
+    const doses = history[key].doses;
+    const doneCount = countDone(doses);
+    const totalMg = getDayTotalMg(doses);
+
+    let badgeClass, badgeText;
+    if (doneCount === 3) { badgeClass = 'badge-full'; badgeText = '完了'; }
+    else if (doneCount > 0) { badgeClass = 'badge-partial'; badgeText = `${doneCount}/3`; }
+    else { badgeClass = 'badge-none'; badgeText = '未記録'; }
+
+    html += `<div class="history-card">
+      <div class="history-card-date">
+        <span>${y}年${m}月${d}日（${WEEKDAYS[dow]}）</span>
+        <span class="hbadge ${badgeClass}">${badgeText}</span>
+      </div>
+      <div class="history-pills">`;
+
+    doses.forEach((val, i) => {
+      let text, cls;
+      if (val === null) { text = `— ${medShort[i]}`; cls = 'skip'; }
+      else if (val === 0) { text = `✗ ${medShort[i]}`; cls = 'skipped'; }
+      else if (IS_TARLIGE[i]) { text = `✓ ${medShort[i]}（${val}錠 ${val*5}mg）`; cls = 'done'; }
+      else { text = `✓ ${medShort[i]}`; cls = 'done'; }
+      html += `<span class="history-pill ${cls}">${text}</span>`;
+    });
+
+    if (totalMg !== null && totalMg > 0) {
+      html += `<span class="history-pill done" style="background:var(--sage);color:white;margin-left:auto">タリージェ計 ${totalMg}mg</span>`;
+    }
+
+    html += `</div></div>`;
+  }
+  container.innerHTML = html;
+}
+
+function renderTrend(keys) {
+  const section = document.getElementById('trendSection');
+  if (keys.length < 2) { section.style.display = 'none'; return; }
+  section.style.display = 'block';
+
+  const chart = document.getElementById('trendChart');
+  chart.innerHTML = '';
+  const maxMg = 30;
+
+  for (const key of keys) {
+    const doses = history[key] ? history[key].doses : [null, null, null];
+    const totalMg = getDayTotalMg(doses) || 0;
+    const [y, m, d] = key.split('-').map(Number);
+    const heightPct = (totalMg / maxMg) * 100;
+
+    let barClass = 'mg0';
+    if (totalMg >= 30) barClass = 'mg15';
+    else if (totalMg >= 20) barClass = 'mg10';
+    else if (totalMg > 0) barClass = 'mg5';
+
+    const wrap = document.createElement('div');
+    wrap.className = 'trend-bar-wrap';
+
+    const mg = document.createElement('div');
+    mg.className = 'trend-mg';
+    mg.textContent = totalMg > 0 ? `${totalMg}` : '';
+
+    const bar = document.createElement('div');
+    bar.className = `trend-bar ${barClass}`;
+    bar.style.height = `${Math.max(heightPct, 4)}%`;
+
+    const label = document.createElement('div');
+    label.className = 'trend-label';
+    label.textContent = `${m}/${d}`;
+
+    wrap.appendChild(mg);
+    wrap.appendChild(bar);
+    wrap.appendChild(label);
+    chart.appendChild(wrap);
+  }
+}
+
+// ── INIT ──
+(function init() {
+  const d = new Date();
+  document.getElementById('dateBadge').textContent =
+    `${d.getMonth()+1}月${d.getDate()}日（${WEEKDAYS[d.getDay()]}）`;
+  renderToday();
+})();
+</script>
+</body>
+</html>
